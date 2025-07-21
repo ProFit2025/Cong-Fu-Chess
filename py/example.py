@@ -1,5 +1,5 @@
 import cv2
-from img import Img
+
 
 
 def main():
