@@ -1,7 +1,6 @@
 import pathlib
 import tempfile
 import os
-import pytest
 from app.Moves import Moves
 
 def create_moves_file(lines):

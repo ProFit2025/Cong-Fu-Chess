@@ -6,6 +6,7 @@ from app.Board   import Board
 from app.Command import Command
 from app.Piece   import Piece
 from app.Img import Img
+from app.InputHandler import InputHandler
 
 
 class InvalidBoard(Exception): ...
@@ -18,6 +19,7 @@ class Game:
         self.user_input_queue = queue.Queue()
         self._start_time = time.monotonic()
         self._current_frame = self.clone_board()
+        self.input_handler = InputHandler(board.W_cells, board.H_cells)
  
 
 
@@ -34,26 +36,47 @@ class Game:
         return self.board.clone()
 
     def start_user_input_thread(self):
-        """Start the user input thread for mouse handling."""
-        def mouse_thread():
+        """Start the user input thread that uses InputHandler."""
+        def key_thread():
             while True:
-                event = cv2.waitKey(1)
-                if event == 27:  
+                key_num = cv2.waitKey(1)
+                if key_num == 27:
                     break
-                
+
+                key = self._convert_key(key_num)
                 now = self.game_time_ms()
-                
-                cmd = Command(
-                    timestamp=now,
-                    piece_id='P1',
-                    type = 'Move',
-                    params = ['b2', 'b5']
-                )
-                self.user_input_queue.put(cmd)
-                time.sleep(0.01)
-        t = threading.Thread(target=mouse_thread, daemon=True)
+
+                # קביעת המשתמש על סמך המקש
+                if key in self.input_handler.movement_keys[1] or key == self.input_handler.select_keys[1] or key == self.input_handler.jump_keys[1]:
+                    user = 1
+                elif key in self.input_handler.movement_keys[2] or key == self.input_handler.select_keys[2] or key == self.input_handler.jump_keys[2]:
+                    user = 2
+                else:
+                    # במידה והמקש לא שייך לאף אחד
+                    continue
+
+                cmd = self.input_handler.handle_key(user, key, timestamp=now)
+                if cmd:
+                    self.user_input_queue.put(cmd)
+               
+        t = threading.Thread(target=key_thread, daemon=True)
         t.start()
         
+        
+    def _convert_key(self, key_num: int) -> str:
+        key_map = {
+            2490368: "up",      
+            2621440: "down",   
+            2424832: "left",    
+            2555904: "right", 
+            13: "enter",       
+            32: "space",       
+            65505: "right_shift", 
+            65506: "left_shift"
+        }
+        return key_map.get(key_num, "")
+
+
     # ─── main public entrypoint ──────────────────────────────────────────────
     def run(self):
         """Main game loop."""
