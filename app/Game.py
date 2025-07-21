@@ -20,7 +20,6 @@ class Game:
         self._start_time = time.monotonic()
         self._current_frame = self.clone_board()
         self.input_handler = InputHandler(board.W_cells, board.H_cells)
- 
 
 
     # ─── helpers ─────────────────────────────────────────────────────────────

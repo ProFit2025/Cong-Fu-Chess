@@ -36,15 +36,16 @@ def test_user1_move_command():
     handler.handle_key(1, "enter")
     # Move right to (1,0)
     handler.handle_key(1, "right")
-    # Second press of "enter" completes the move command.
+    # Second press of "enter" completes the move command with timestamp=100
     command = handler.handle_key(1, "enter", timestamp=100)
     
     # Assert:
     assert command is not None
-    assert command["piece_id"] == "P1"
-    assert command["type"] == "Move"
-    assert command["params"] == [(0, 0), (1, 0)]
-    
+    assert command.piece_id == "P1"
+    assert command.type == "Move"
+    assert command.timestamp == 100
+    assert command.params == [(0, 0), (1, 0)]
+
 def test_user2_jump_command():
     # Arrange
     handler = InputHandler(8, 8)
@@ -56,14 +57,15 @@ def test_user2_jump_command():
     handler.handle_key(2, "space")
     # Move up to (6,6)
     handler.handle_key(2, "w")
-    # Press jump key ("left_shift") to complete jump command.
+    # Press jump key ("left_shift") to complete jump command with timestamp=200
     command = handler.handle_key(2, "left_shift", timestamp=200)
     
     # Assert:
     assert command is not None
-    assert command["piece_id"] == "P2"
-    assert command["type"] == "Jump"
-    assert command["params"] == [(6, 7), (6, 6)]
+    assert command.piece_id == "P2"
+    assert command.type == "Jump"
+    assert command.timestamp == 200
+    assert command.params == [(6, 7), (6, 6)]
 
 def test_invalid_jump_without_selection():
     # Arrange
