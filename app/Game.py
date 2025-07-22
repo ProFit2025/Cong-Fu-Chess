@@ -31,7 +31,6 @@ class Game:
         """Return the piece at the given board cell, or None if empty."""
         for p in self.pieces:
             if p.current_state.physics.cell == pos:
-                print("@@@@@@@@@@@piece: ", p.piece_id, pos)
                 return p
         return None
 
@@ -66,10 +65,8 @@ class Game:
                     continue
 
                 cmd = self.input_handler.handle_key(user, key, timestamp=now)
-                print("==========", self.input_handler.get_state(user), "========")
                 
                 if cmd:
-                    print(cmd)
                     self.user_input_queue.put(cmd)
 
         threading.Thread(target=key_thread, daemon=True).start()
@@ -114,10 +111,18 @@ class Game:
         # צור עותק של הלוח כדי לצייר עליו את הכלים
         board_copy = self.clone_board()  
         now = self.game_time_ms()
+        
+        # צייר את הסמנים של השחקנים
+        user1_pos = self.input_handler.get_cursor_position(1)
+        user2_pos = self.input_handler.get_cursor_position(2)
+        
         # כל כלי מצייר את עצמו על הלוח (ה-img של הלוח)
         for piece in self.pieces:
             piece.draw_on_board(board_copy, now)
        
+        board_copy.draw_cursor(user1_pos, (0, 0, 255), thickness=3)        
+        board_copy.draw_cursor(user2_pos, (0, 255, 0), thickness=3)
+        
         self._current_frame = board_copy
 
     def _show(self) -> bool:

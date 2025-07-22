@@ -2,190 +2,120 @@ from typing import Tuple, Optional
 from app.Command import Command
 from app.Board import Board
 
+def notation_to_cell(notation: str) -> Tuple[int, int]:
+    """Convert chess notation like 'a1' to (col, row) tuple."""
+    col = ord(notation[0]) - ord('a')
+    row = int(notation[1:]) - 1
+    return (col, row)
 
 class Physics:
     """Base physics class for all piece types."""
-
     def __init__(self, start_cell: Tuple[int, int], board: Board, speed_m_s: float = 1.0):
         self.board = board
-        self.cell = start_cell
-        self.speed_m_s = speed_m_s
+        self.cell = start_cell        # logical cell (col, row)
+        self.speed_m_s = speed_m_s    # cells per second
 
     def _cell_to_pixel(self, cell: Tuple[int, int]) -> Tuple[float, float]:
-        """Convert board cell (row, col) to pixel coordinates."""
         row, col = cell
-        x = col * self.board.cell_W_pix
-        y = row * self.board.cell_H_pix
-        return float(x), float(y)
+        return float(col * self.board.cell_W_pix), float(row * self.board.cell_H_pix)
 
     def reset(self, cmd: Command):
-        """Reset must be implemented by subclasses."""
-        raise NotImplementedError("reset() must be implemented in a subclass.")
+        raise NotImplementedError("reset() must be implemented in subclass")
 
     def update(self, now_ms: int):
-        """Update must be implemented by subclasses."""
-        raise NotImplementedError("update() must be implemented in a subclass.")
-
-    def can_be_captured(self) -> bool:
-        return True
-
-    def can_capture(self) -> bool:
-        return True
+        raise NotImplementedError("update() must be implemented in subclass")
 
     def get_pos(self) -> Tuple[float, float]:
-        """Return current pixel position."""
+        """Pixel position for rendering."""
+        if hasattr(self, "pixel_pos"):
+            return self.pixel_pos
         return self._cell_to_pixel(self.cell)
 
-
-class IdlePhysics(Physics):
-    """Physics for a piece that does not move."""
-
-    def reset(self, cmd: Command):
-        # אין תנועה – רק מאפסים את מצב התנועה
-        self.cell = self.cell
-
-    def update(self, now_ms: int):
-        # אין עדכון בתנועה למצב "מנוחה"
-        pass
-
-    def can_be_captured(self) -> bool:
-        return True
-
-    def can_capture(self) -> bool:
-        return False
-
+    def clone(self) -> "Physics":
+        new = self.__class__(self.cell, self.board, self.speed_m_s)
+        for attr in ("pixel_pos", "start_pixel", "target_cell", "target_pixel",
+                     "start_time", "duration_ms", "moving", "next_state_when_finished"):
+            if hasattr(self, attr):
+                setattr(new, attr, getattr(self, attr))
+        return new
 
 class MovePhysics(Physics):
-    """Physics for pieces moving smoothly between cells."""
-
-    def __init__(self, start_cell: Tuple[int, int], board: Board, speed_m_s: float = 1.0):
-        super().__init__(start_cell, board, speed_m_s)
-        self.pixel_pos = self._cell_to_pixel(start_cell)
-        self.target_cell = start_cell
-        self.target_pixel = self.pixel_pos
-        self.moving = False
-        self.last_update_ms: Optional[int] = None
-        self.next_state_when_finished = "Idle"
-
-    def _parse_target(self, cmd: Command):
-        """Extract target cell from command parameters."""
-        if hasattr(cmd, "params") and len(cmd.params) >= 2:
-            to = cmd.params[1]
-            if isinstance(to, tuple):
-                return to
-            elif isinstance(to, str) and len(to) == 2:
-                col = ord(to[0].lower()) - ord('a')
-                row = int(to[1]) - 1
-                return (row, col)
-        return self.cell
-
+    """Physics for smooth linear move from src to dst."""
     def reset(self, cmd: Command):
-        self.target_cell = self._parse_target(cmd)
-        self.target_pixel = self._cell_to_pixel(self.target_cell)
-        self.moving = (self.cell != self.target_cell)
-        self.last_update_ms = None
+        # cmd.params == [from_notation, to_notation]
+        src = notation_to_cell(cmd.params[0])
+        dst = notation_to_cell(cmd.params[1])
+        self.cell = src
+        self.start_pixel = self._cell_to_pixel(src)
+        self.target_cell = dst
+        self.target_pixel = self._cell_to_pixel(dst)
+        # Using Euclidean distance in cells (note: ensure proper exponentiation)
+        dx = dst[0] - src[0]
+        dy = dst[1] - src[1]
+        cell_dist = (dx**2 + dy**2) ** 0.5
+        self.duration_ms = (cell_dist / self.speed_m_s) * 1000
+        self.start_time = cmd.timestamp or 0
+        self.pixel_pos = self.start_pixel
+        self.moving = True
+        # After move completes, auto-transition to LongRest state.
+        self.next_state_when_finished = "LongRest"
 
     def update(self, now_ms: int):
-        if not self.moving:
+        if not getattr(self, "moving", False):
             return
-
-        if self.last_update_ms is None:
-            elapsed = 0.016  # initial small step (16ms)
-        else:
-            elapsed = (now_ms - self.last_update_ms) / 1000.0
-
-        self.last_update_ms = now_ms
-
-        x, y = self.pixel_pos
-        tx, ty = self.target_pixel
-        dx, dy = tx - x, ty - y
-        dist = (dx**2 + dy**2)**0.5
-
-        if dist == 0:
+        elapsed = now_ms - self.start_time
+        if elapsed >= self.duration_ms:
             self.cell = self.target_cell
             self.pixel_pos = self.target_pixel
             self.moving = False
-            return
-
-        cell_diag = (self.board.cell_W_pix**2 + self.board.cell_H_pix**2)**0.5
-        speed_pix_s = self.speed_m_s * cell_diag
-        move_dist = min(dist, speed_pix_s * elapsed)
-
-        if move_dist >= dist:
-            self.pixel_pos = self.target_pixel
-            self.cell = self.target_cell
-            self.moving = False
         else:
-            self.pixel_pos = (x + dx * (move_dist / dist), y + dy * (move_dist / dist))
-
-    def get_pos(self) -> Tuple[float, float]:
-        return self.pixel_pos
-
+            t = elapsed / self.duration_ms
+            sx, sy = self.start_pixel
+            tx, ty = self.target_pixel
+            self.pixel_pos = (sx + (tx - sx)*t, sy + (ty - sy)*t)
 
 class JumpPhysics(Physics):
-    """Physics for pieces that instantly jump to a target cell."""
-
-    def __init__(self, start_cell: Tuple[int, int], board: Board, speed_m_s: float = 1.0):
-        super().__init__(start_cell, board, speed_m_s)
-        self.target_cell = start_cell
-        self.target_pixel = self._cell_to_pixel(start_cell)
-        self.moving = False
-        self.next_state_when_finished = "Idle"
-
-    def _parse_target(self, cmd: Command):
-        if hasattr(cmd, "params") and len(cmd.params) >= 2:
-            to = cmd.params[1]
-            if isinstance(to, tuple):
-                return to
-            elif isinstance(to, str) and len(to) == 2:
-                col = ord(to[0].lower()) - ord('a')
-                row = int(to[1]) - 1
-                return (row, col)
-        return self.cell
-
+    """Physics for instant jump (no interpolation)."""
     def reset(self, cmd: Command):
-        self.target_cell = self._parse_target(cmd)
-        self.target_pixel = self._cell_to_pixel(self.target_cell)
-        self.moving = (self.cell != self.target_cell)
+        # cmd.params == [cell_notation]
+        dest = notation_to_cell(cmd.params[0])
+        self.cell = dest
+        self.pixel_pos = self._cell_to_pixel(dest)
+        self.moving = False
+        # After jump, auto-transition to ShortRest.
+        self.next_state_when_finished = "ShortRest"
 
     def update(self, now_ms: int):
-        if self.moving:
-            self.cell = self.target_cell
-            self.moving = False
+        pass
 
-    def get_pos(self) -> Tuple[float, float]:
-        return self._cell_to_pixel(self.cell)
+class IdlePhysics(Physics):
+    """Physics for idle state. The piece remains static."""
+    def reset(self, cmd: Command):
+        self.pixel_pos = self._cell_to_pixel(self.cell)
+        self.moving = False
+        self.next_state_when_finished = None  # Idle has no auto-transition by itself
 
+    def update(self, now_ms: int):
+        pass
 
 class LongRestPhysics(Physics):
-    """Physics for invulnerable pieces."""
-
+    """Physics for long rest state, following a move."""
     def reset(self, cmd: Command):
-        # אין תנועה – המצב נשאר קבוע
-        pass
+        self.pixel_pos = self._cell_to_pixel(self.cell)
+        self.moving = False
+        # Auto-transition back to Idle after long rest.
+        self.next_state_when_finished = "Idle"
 
     def update(self, now_ms: int):
         pass
-
-    def can_be_captured(self) -> bool:
-        return False
-
-    def can_capture(self) -> bool:
-        return False
-
 
 class ShortRestPhysics(Physics):
-    """Physics for pieces that are vulnerable but do not capture."""
-
+    """Physics for short rest state, following a jump."""
     def reset(self, cmd: Command):
-        # אין תנועה – פשוט מאפסים
-        pass
+        self.pixel_pos = self._cell_to_pixel(self.cell)
+        self.moving = False
+        # Auto-transition back to Idle after short rest.
+        self.next_state_when_finished = "Idle"
 
     def update(self, now_ms: int):
         pass
-
-    def can_be_captured(self) -> bool:
-        return True
-
-    def can_capture(self) -> bool:
-        return False

@@ -14,7 +14,8 @@ class GameFactory:
         piece_factory = PieceFactory(board, 'pieces')
         for i in range(board_pieces.shape[0]):
             for j in range(board_pieces.shape[1]):
-                p_type = board_pieces.iloc[i][j]
+                # Use .iloc with two indices
+                p_type = board_pieces.iloc[i, j]
                 if pd.isna(p_type) or not isinstance(p_type, str):
                     continue
                 

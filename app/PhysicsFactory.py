@@ -14,11 +14,10 @@ class PhysicsFactory:
             return MovePhysics(start_cell, self.board, speed_m_s=speed)
         elif p_type == "jump":
             return JumpPhysics(start_cell, self.board, speed_m_s=speed)
-        elif p_type == "longrest":
+        elif p_type == "long_rest":
             return LongRestPhysics(start_cell, self.board, speed_m_s=speed)
-        elif p_type == "shortrest":
+        elif p_type == "short_rest":
             return ShortRestPhysics(start_cell, self.board, speed_m_s=speed)
         else:
-            # ברירת מחדל - IdlePhysics
             return IdlePhysics(start_cell, self.board, speed_m_s=speed)
 

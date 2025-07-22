@@ -1,5 +1,6 @@
 import pathlib
 from typing import Optional
+
 from app.Img import Img
 from app.Command import Command
 
@@ -64,3 +65,13 @@ class Graphics:
     def get_img(self) -> Img:
         """Return the current frame image."""
         return self.img
+
+    def clone(self):
+        """Create a deep copy of the Graphics object."""
+        new_gfx = Graphics(self.sprites_folder, self.cell_size, self.loop, self.fps)
+        new_gfx.frames = [frame.clone() for frame in self.frames]
+        new_gfx.current_frame_idx = self.current_frame_idx
+        new_gfx.last_update_ms = self.last_update_ms
+        new_gfx.img = self.img.clone()
+        return new_gfx
+

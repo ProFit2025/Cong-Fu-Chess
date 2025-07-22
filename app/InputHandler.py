@@ -138,3 +138,9 @@ class InputHandler:
         Useful for testing.
         """
         return self.player_states[user].copy()
+    
+    def get_cursor_position(self, user: int) -> Tuple[int, int]:
+        """
+        Returns the current cursor position for the specified user.
+        """
+        return self.player_states[user]["pos"]

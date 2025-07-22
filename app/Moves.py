@@ -35,3 +35,4 @@ class Moves:
             if 0 <= nr < H and 0 <= nc < W:
                 valid_moves.append((nr, nc))
         return valid_moves
+    

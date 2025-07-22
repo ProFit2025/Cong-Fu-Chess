@@ -13,6 +13,7 @@ class State:
         self.physics = physics
         self.transitions: Dict[str, State] = {}
         self.current_command: Optional[Command] = None
+        self.command_start_time = 0
 
     def set_transition(self, event: str, target: "State"):
         """Define a state transition on the given event."""
@@ -21,6 +22,9 @@ class State:
     def reset(self, cmd: Command):
         """Reset the state with the new command."""
         self.current_command = cmd
+        self.command_start_time = cmd.timestamp
+        
+        # Reset all components with the new command
         self.physics.reset(cmd)
         self.graphics.reset(cmd)
 
@@ -37,20 +41,51 @@ class State:
         """
         event = cmd.type
         if event in self.transitions:
-            return self.transitions[event]
+            next_state = self.transitions[event].clone()
+            next_state.physics.cell = self.physics.cell
+            return next_state
         return self
 
     def update(self, now_ms: int) -> "State":
-        """Update the state based on game time, and transition if appropriate."""
+        """Update the state based on game time, and auto-transition if appropriate."""
+        # Update physics and graphics components.
         self.physics.update(now_ms)
         self.graphics.update(now_ms)
+
+        # Debug: Print current physics state and next state flag.
+        print(f"[DEBUG] State.update: moving={getattr(self.physics, 'moving', None)}, next={self.physics.next_state_when_finished}")
+
+        # Check if the current state's action is complete.
         if self.can_transition(now_ms):
-            if hasattr(self.physics, 'next_state_when_finished'):
-                next_event = self.physics.next_state_when_finished
-                if next_event in self.transitions:
-                    return self.transitions[next_event]
+            next_event = self.physics.next_state_when_finished
+            if next_event is not None and next_event in self.transitions:
+                next_state = self.transitions[next_event]
+                # Optionally, use a dummy command so that next_state resets properly.
+                from app.Command import Command  # ensure Command is imported
+                dummy_cmd = Command(timestamp=now_ms, piece_id="", type=next_event, params=[])
+                next_state.reset(dummy_cmd)
+                # Debug: Indicate auto-transition.
+                print(f"[DEBUG] Auto-transitioning from state to {next_event} state")
+                return next_state
         return self
 
     def get_command(self) -> Command:
         """Return the current command (if any) for this state."""
         return self.current_command
+
+    def __eq__(self, other):
+        """Check if two states are equal."""
+        if not isinstance(other, State):
+            return False
+        return (id(self) == id(other))  # השוואה לפי זהות האובייקט
+
+    def __ne__(self, other):
+        """Check if two states are not equal."""
+        return not self.__eq__(other)
+    
+    def clone(self) -> "State":
+        return State(
+            self.moves, 
+            self.graphics.clone(), 
+            self.physics.clone()
+        )
