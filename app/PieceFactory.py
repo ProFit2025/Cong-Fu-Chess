@@ -17,6 +17,7 @@ class PieceFactory:
         self.pieces_root = pathlib.Path(pieces_root)
         self.graphics_factory = GraphicsFactory()
         self.physics_factory = PhysicsFactory(board)
+        self.counter = {}  # Added: counter per piece type
 
     def _build_state_machine(self, piece_dir: pathlib.Path) -> State:
         """Build a state machine for a piece from its directory."""
@@ -51,7 +52,7 @@ class PieceFactory:
 
         # Load physics
         physics_cfg = cfg.get("physics", {})
-        start_cell = (0, 0)  # Placeholder, will be set in create_piece
+        start_cell = (0, 0)  # Placeholder; will be set in create_piece
         physics = self.physics_factory.create(start_cell, physics_cfg)
 
         # Create and return the "idle" state
@@ -67,11 +68,17 @@ class PieceFactory:
         # Build the state machine (idle state)
         idle_state = self._build_state_machine(piece_dir)
 
-        # Update physics starting position
+        # Set starting position for physics
         idle_state.physics.cell = cell
         idle_state.physics.pixel_pos = idle_state.physics._cell_to_pixel(cell)
         idle_state.physics.target_cell = cell
         idle_state.physics.target_pixel = idle_state.physics.pixel_pos
 
-        # Create and return the piece
-        return Piece(piece_id=p_type, init_state=idle_state)
+        # Generate a unique id for the piece.
+        if p_type not in self.counter:
+            self.counter[p_type] = 0
+        self.counter[p_type] += 1
+        unique_id = f"{p_type}_{self.counter[p_type]}"
+
+        # Create and return the piece with the unique id.
+        return Piece(piece_id=unique_id, init_state=idle_state)

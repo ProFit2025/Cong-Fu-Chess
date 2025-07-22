@@ -6,10 +6,10 @@ from app.Command import Command
 class Graphics:
     def __init__(self,
                  sprites_folder: pathlib.Path,
-                  cell_size: tuple[int, int],
+                 cell_size: tuple[int, int],
                  loop: bool = True,
                  fps: float = 6.0):
-        """Initialize graphics with sprites folder, cell size, loop setting, and FPS."""
+        """Initialize graphics with sprites folder, cell size, loop flag, and FPS."""
         self.sprites_folder = sprites_folder
         self.cell_size = cell_size
         self.loop = loop
@@ -20,7 +20,7 @@ class Graphics:
         self.img: Optional[Img] = self.frames[0] if self.frames else None
 
     def _load_frames(self):
-        """Load all sprite frames from the folder (sorted by name)."""
+        """Load sprite frames from the folder, sorted alphabetically."""
         frames = []
         if not self.sprites_folder.exists():
             return frames
@@ -30,7 +30,7 @@ class Graphics:
         return frames
 
     def copy(self):
-        """Create a shallow copy of the graphics object."""
+        """Create a shallow copy of the Graphics object."""
         new_gfx = Graphics(self.sprites_folder, self.cell_size, self.loop, self.fps)
         new_gfx.frames = self.frames
         new_gfx.current_frame_idx = self.current_frame_idx
@@ -39,14 +39,14 @@ class Graphics:
         return new_gfx
 
     def reset(self, cmd: Command):
-        """Reset the animation with a new command."""
+        """Reset the animation (e.g. on state change)."""
         self.current_frame_idx = 0
         self.last_update_ms = 0
         if self.frames:
             self.img = self.frames[0]
 
     def update(self, now_ms: int):
-        """Advance animation frame based on game-loop time, not wall time."""
+        """Advance the animation frame based on game time."""
         if not self.frames or self.fps <= 0:
             return
         if self.last_update_ms == 0:
@@ -57,13 +57,10 @@ class Graphics:
         if elapsed >= frame_time:
             self.current_frame_idx += 1
             if self.current_frame_idx >= len(self.frames):
-                if self.loop:
-                    self.current_frame_idx = 0
-                else:
-                    self.current_frame_idx = len(self.frames) - 1
+                self.current_frame_idx = 0 if self.loop else len(self.frames) - 1
             self.img = self.frames[self.current_frame_idx]
             self.last_update_ms = now_ms
 
     def get_img(self) -> Img:
-        """Get the current frame image."""
+        """Return the current frame image."""
         return self.img

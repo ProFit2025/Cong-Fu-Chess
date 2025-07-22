@@ -15,40 +15,42 @@ class State:
         self.current_command: Optional[Command] = None
 
     def set_transition(self, event: str, target: "State"):
-        """Set a transition from this state to another state on an event."""
+        """Define a state transition on the given event."""
         self.transitions[event] = target
 
     def reset(self, cmd: Command):
-        """Reset the state with a new command."""
+        """Reset the state with the new command."""
         self.current_command = cmd
         self.physics.reset(cmd)
         self.graphics.reset(cmd)
 
     def can_transition(self, now_ms: int) -> bool:
-        """Check if the state can transition."""
-        # Example: Check if the physics has completed its action
-        return False
+        """Return True if the physics is no longer moving (i.e. action complete)."""
+        if hasattr(self.physics, 'moving'):
+            return not self.physics.moving
+        return True
 
     def get_state_after_command(self, cmd: Command, now_ms: int) -> "State":
-        """Get the next state after processing a command."""
-        event = cmd.type  # Use the command type as the event
+        """
+        Return the next state based on the event (command type). 
+        If no transition is defined, return self.
+        """
+        event = cmd.type
         if event in self.transitions:
             return self.transitions[event]
-        return self  # Stay in the current state if no transition is defined
+        return self
 
     def update(self, now_ms: int) -> "State":
-        """Update the state based on current time."""
+        """Update the state based on game time, and transition if appropriate."""
         self.physics.update(now_ms)
         self.graphics.update(now_ms)
-
-        # Check if a transition is possible
         if self.can_transition(now_ms):
-            next_state_name = self.physics.next_state_when_finished
-            if next_state_name in self.transitions:
-                return self.transitions[next_state_name]
-
-        return self  # Stay in the current state if no transition occurs
+            if hasattr(self.physics, 'next_state_when_finished'):
+                next_event = self.physics.next_state_when_finished
+                if next_event in self.transitions:
+                    return self.transitions[next_event]
+        return self
 
     def get_command(self) -> Command:
-        """Get the current command for this state."""
+        """Return the current command (if any) for this state."""
         return self.current_command
