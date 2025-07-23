@@ -128,8 +128,8 @@ class State:
         if not hasattr(self, 'moves') or self.moves is None:
             return False
         pos_x, pos_y = self.physics.cell
-        dis_x, dis_y = dest[0] - pos_x, dest[1] - pos_y
+        
         possible_moves = self.moves.get_moves(pos_x, pos_y)
         print("dest ===========" , dest, "position======", (pos_x, pos_y))
         print(possible_moves)
-        return (dis_x, dis_y) in possible_moves
+        return dest in possible_moves

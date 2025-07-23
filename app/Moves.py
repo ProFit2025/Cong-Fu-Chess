@@ -1,6 +1,7 @@
 # Moves.py  – drop-in replacement
 import pathlib
 from typing import List, Tuple
+import re
 
 class Moves:
     def __init__(self, txt_path: pathlib.Path, dims: Tuple[int, int]):
@@ -16,8 +17,9 @@ class Moves:
                 line = line.strip()
                 if not line or line.startswith("//"):
                     continue
-                parts = line.split(',')
-                if len(parts) == 2:
+                parts = re.split(r'[,:]', line)
+                print(parts)
+                if len(parts) >= 2:
                     try:
                         dx = int(parts[0])
                         dy = int(parts[1])
