@@ -39,6 +39,14 @@ class Physics:
                 setattr(new, attr, getattr(self, attr))
         return new
 
+    def can_be_captured(self) -> bool:
+        """Default: can be captured."""
+        return True
+
+    def can_capture(self) -> bool:
+        """Default: cannot capture."""
+        return False
+
 class MovePhysics(Physics):
     """Physics for smooth linear move from src to dst."""
     def reset(self, cmd: Command):
@@ -49,7 +57,6 @@ class MovePhysics(Physics):
         self.start_pixel = self._cell_to_pixel(src)
         self.target_cell = dst
         self.target_pixel = self._cell_to_pixel(dst)
-        # Using Euclidean distance in cells (note: ensure proper exponentiation)
         dx = dst[0] - src[0]
         dy = dst[1] - src[1]
         cell_dist = (dx**2 + dy**2) ** 0.5
@@ -74,6 +81,12 @@ class MovePhysics(Physics):
             tx, ty = self.target_pixel
             self.pixel_pos = (sx + (tx - sx)*t, sy + (ty - sy)*t)
 
+    def can_be_captured(self) -> bool:
+        return True
+
+    def can_capture(self) -> bool:
+        return True
+
 class JumpPhysics(Physics):
     """Physics for instant jump (no interpolation)."""
     def reset(self, cmd: Command):
@@ -88,6 +101,12 @@ class JumpPhysics(Physics):
     def update(self, now_ms: int):
         pass
 
+    def can_be_captured(self) -> bool:
+        return True
+
+    def can_capture(self) -> bool:
+        return False
+
 class IdlePhysics(Physics):
     """Physics for idle state. The piece remains static."""
     def reset(self, cmd: Command):
@@ -97,6 +116,12 @@ class IdlePhysics(Physics):
 
     def update(self, now_ms: int):
         pass
+
+    def can_be_captured(self) -> bool:
+        return True
+
+    def can_capture(self) -> bool:
+        return False
 
 class LongRestPhysics(Physics):
     """Physics for long rest state, following a move."""
@@ -109,6 +134,12 @@ class LongRestPhysics(Physics):
     def update(self, now_ms: int):
         pass
 
+    def can_be_captured(self) -> bool:
+        return True
+
+    def can_capture(self) -> bool:
+        return False
+
 class ShortRestPhysics(Physics):
     """Physics for short rest state, following a jump."""
     def reset(self, cmd: Command):
@@ -119,3 +150,9 @@ class ShortRestPhysics(Physics):
 
     def update(self, now_ms: int):
         pass
+
+    def can_be_captured(self) -> bool:
+        return True
+
+    def can_capture(self) -> bool:
+        return False
