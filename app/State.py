@@ -3,7 +3,7 @@ from app.Graphics import Graphics
 from app.Physics import Physics
 from typing import Dict, Optional
 from app.Command import Command
-from app.Physics import notation_to_cell  # ensure this is imported
+from app.Physics import notation_to_cell  
 
 
 class State:

@@ -108,15 +108,12 @@ class Game:
     # ─── drawing helpers ────────────────────────────────────────────────────
     def _draw(self):
         """Draw the current game state."""
-        # צור עותק של הלוח כדי לצייר עליו את הכלים
         board_copy = self.clone_board()  
         now = self.game_time_ms()
         
-        # צייר את הסמנים של השחקנים
         user1_pos = self.input_handler.get_cursor_position(1)
         user2_pos = self.input_handler.get_cursor_position(2)
         
-        # כל כלי מצייר את עצמו על הלוח (ה-img של הלוח)
         for piece in self.pieces:
             piece.draw_on_board(board_copy, now)
        
@@ -128,12 +125,12 @@ class Game:
     def _show(self) -> bool:
         """Show the current frame and handle window events."""
         if self._current_frame is None:
-            return True  # אין מה להציג, ממשיכים
+            return True 
 
         cv2.imshow("Cong Fu Chess", self._current_frame.img.img)
         key = cv2.waitKey(1)
         if key == 27:  # ESC
-            return False  # המשתמש סגר
+            return False  
         return True
 
 
@@ -152,31 +149,24 @@ class Game:
     def _resolve_collisions(self):
         """Resolve piece collisions and captures."""
         captured = set()
-        # השווה כל זוג ייחודי של כלים
         for i in range(len(self.pieces)):
             for j in range(i + 1, len(self.pieces)):
                 p1, p2 = self.pieces[i], self.pieces[j]
-                # אם שני הכלים נמצאים באותה משבצת
                 if p1.current_state.physics.cell == p2.current_state.physics.cell:
                     p1_can_capture = p1.current_state.physics.can_capture()
                     p1_can_be_captured = p1.current_state.physics.can_be_captured()
                     p2_can_capture = p2.current_state.physics.can_capture()
                     p2_can_be_captured = p2.current_state.physics.can_be_captured()
 
-                    # מצב בו רק p1 יכול לתוקף
                     if p1_can_capture and p2_can_be_captured and not (p2_can_capture):
                         captured.add(p2)
-                    # מצב בו רק p2 יכול לתוקף
                     elif p2_can_capture and p1_can_be_captured and not (p1_can_capture):
                         captured.add(p1)
-                    # מצב בו שני הכלים יכולים לתוקף ולהיאכל
                     elif p1_can_capture and p1_can_be_captured and p2_can_capture and p2_can_be_captured:
-                        # הכלי שהעדכון האחרון שלו מוקדם יותר "נצח"
                         if p1.current_state.last_update < p2.current_state.last_update:
                             captured.add(p2)
                         else:
                             captured.add(p1)
-        # הסרת הכלים שנלכדו מרשימת הכלים ומה-dictionary
         for p in captured:
             if p in self.pieces:
                 self.pieces.remove(p)

@@ -19,9 +19,7 @@ class InputHandler:
     def __init__(self, board_width: int, board_height: int, piece_at_callback):
         self.board_width = board_width
         self.board_height = board_height
-        # Callback שמחזיר את הכלי במשבצת (אם יש)
         self.get_piece_at = piece_at_callback
-        # אתחול מצב לכל שחקן – במקום piece_id נעדכן לפני יצירת הפקודה
         self.player_states = {
             1: {"pos": (0, 0), "selected": None, "mode": "select_soldier", "piece_id": None},
             2: {"pos": (board_width - 1, board_height - 1), "selected": None, "mode": "select_soldier", "piece_id": None}
@@ -89,18 +87,14 @@ class InputHandler:
                 # Attempt to select a soldier at the current position.
                 piece = self.get_piece_at(state["pos"])
                 if piece is None:
-                    # אין כלי – לא מבצעים כלום.
                     return None
-                # בדיקת צבע: שחקן 1 רק חיילים שחורים (id מתחיל ב-"B"), שחקן 2 רק חיילים לבנים (id מתחיל ב-"W")
                 if (user == 1 and not piece.piece_id[1] == 'B') or (user == 2 and not piece.piece_id[1] == 'W'):
                     return None
-                # בחרנו כלי – שמורים את המיקום ואת המזהה הייחודי שלו, ועוברים למצב בחירת יעד.
                 state["selected"] = state["pos"]
                 state["piece_id"] = piece.piece_id
                 state["mode"] = "select_destination"
                 return None
             elif state["mode"] == "select_destination":
-                # השלמת פקודת Move – מקור: state["selected"], יעד: state["pos"]
                 command = Command(
                     timestamp=timestamp if timestamp is not None else 0,
                     piece_id=state["piece_id"],
